@@ -157,7 +157,7 @@ const image = function () {
 
 //----------------------------------- Serve ----------------------------//
 
-const build = parallel(html, css, styles, fonts, scripts, image)
+const build = parallel(html, css, styles, fonts, scripts, image, libraries)
 
 const without_min = parallel(styles_without_min, scripts_without_min)
 
@@ -173,6 +173,7 @@ const all_watch = () => {
     watch(path.watch.fonts, fonts);
     watch(path.watch.js, scripts);
     watch(path.watch.img, image);
+    watch(path.watch.lib, libraries);
 }
 
 const clean = function (done) {
