@@ -28,5 +28,11 @@
     "gulp-cli": "^2.3.0",
     "gulp-rename": "^2.0.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@popperjs/core": "^2.10.1",
+    "babel-loader": "^8.2.2",
+    "bootstrap": "^5.1.1",
+    "webpack": "^5.53.0",
+    "webpack-stream": "^7.0.0"
+  }
 }
