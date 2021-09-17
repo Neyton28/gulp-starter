@@ -12,33 +12,41 @@ const   {task, watch, src, dest, parallel, series} = require('gulp'),
         rename = require('gulp-rename'),
         stream = browserSync.stream
         
+const   webpack = require('webpack-stream');
+
+let mode = 'development'
 
 //----------------------------------- Path ----------------------------//
+
 
 const  path = {
     build: {
         html: 'build/',
-        css: 'build/assets/css',
-        img: 'build/assets/img',
-        js: 'build/assets/js',
-        fonts: 'build/assets/fonts',
+        css: 'build/css',
+        img: 'build/img',
+        js: 'build/js',
+        fonts: 'build/fonts',
     },
     src: {
-        html: 'src/html/*.html',
+        html: 'src/*.html',
+        css: 'src/css/*.css',
         sass: 'src/sass/*.sass',
         img: 'src/img/**',
-        js: 'src/js/*.js',
-        fonts: 'src/fonts/**/*.*'
+        js: 'src/js/index.js',
+        jsLib: 'src/js-lib/*.js',
+        fonts: 'src/fonts/**'
     },
     watch: {
-        html: 'src/html/**/*.html',
+        html: 'src/**/*.html',
+        php: './**/*.php',
         sass: 'src/sass/**',
         js: 'src/js/**',
-        img: 'src/img/**/*.*',
-        fonts: 'src/fonts/**/*.*'
+        img: 'src/img/**',
+        fonts: 'src/fonts/**'
     },
     clean: './build'
 };
+
 
 //----------------------------------- Html ----------------------------//
 
@@ -53,6 +61,12 @@ const html = function() {
 };
 
 //----------------------------------- Style ----------------------------//
+
+const css = function() {
+    return src(path.src.css) 
+        .pipe(dest(path.build.css))
+        .pipe(stream());
+}
 
 const styles = function () {
     return src(path.src.sass)
@@ -83,18 +97,50 @@ const fonts = function() {
 
 //----------------------------------- JS ----------------------------//
 
-const scripts = function () {
-    return src(path.src.js) 
-        .pipe(babel({
-            presets: ['@babel/env']
-        }))
-        .pipe(sourcemaps.init())
+const lib_scripts = function() {
+    return src(path.src.jsLib) 
         .pipe(uglify()) 
         .pipe(rename({suffix: '.min'})) 
+        .pipe(dest(path.build.js))
+        .pipe(stream());
+}
+const main_scripts = function() {
+    return src(path.src.js) 
+        .pipe(sourcemaps.init())
+        .pipe(webpack({
+            mode: mode,
+            output: {
+                filename: 'app.js',
+              },
+              module: {
+                rules: [
+                  {
+                    test: /\.m?js$/,
+                    exclude: /(node_modules|bower_components)/,
+                    use: {
+                      loader: 'babel-loader',
+                      options: {
+                        presets: [
+                            [
+                                "@babel/preset-env",
+                                {
+                                    exclude: ["transform-regenerator"]
+                                },
+                            ]
+                        ],
+                      }
+                    }
+                  }
+                ]
+              }
+        }))
+        .pipe(uglify()) 
         .pipe(sourcemaps.write('./'))
         .pipe(dest(path.build.js))
         .pipe(stream());
-};
+}
+
+const scripts = parallel( main_scripts , lib_scripts )
 
 const scripts_without_min = function () {
     return src(path.src.js) 
@@ -115,7 +161,7 @@ const image = function () {
 
 //----------------------------------- Serve ----------------------------//
 
-const build = parallel(html, styles, fonts, scripts, image)
+const build = parallel(html, css, styles, fonts, scripts, image)
 
 const without_min = parallel(styles_without_min, scripts_without_min)
 
@@ -127,14 +173,12 @@ const webserver = function() {
     });
 };
 
-const serve = () => {
-    build()
-    webserver()
+const all_watch = () => {
     watch(path.watch.html, html);
     watch(path.watch.sass, styles);
-    watch(path.src.fonts, fonts);
-    watch(path.src.js, scripts);
-    watch(path.src.img, image);
+    watch(path.watch.fonts, fonts);
+    watch(path.watch.js, scripts);
+    watch(path.watch.img, image);
 }
 
 const clean = function (done) {
@@ -145,6 +189,6 @@ const clean = function (done) {
 
 exports.clean = clean
 
-exports.build = series(clean, build, without_min)
+exports.build = series( ()=>{mode = 'production'}, clean, build, without_min)
 
-exports.default = serve
+exports.default = series(build, parallel(webserver, all_watch)) 
